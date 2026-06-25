@@ -12,4 +12,9 @@
     <ProjectReference Include="..\ImprentaSR.Infrastructure\ImprentaSR.Infrastructure.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.0-preview.3.25171.1" />
+  </ItemGroup>
+
 </Project>
