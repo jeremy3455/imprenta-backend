@@ -8,3 +8,8 @@ obj/
 *.vs/
 .DS_Store
 Thumbs.db
+
+# Legacy - replaced by Clean Architecture
+backImprenta/
+ImprentaSR/backImprenta/
+ImprentaSR/ImprentaSR.Domain/
