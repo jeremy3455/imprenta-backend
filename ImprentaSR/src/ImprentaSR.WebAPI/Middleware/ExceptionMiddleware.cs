@@ -3,17 +3,32 @@ using System.Text.Json;
 
 namespace ImprentaSR.WebAPI.Middleware;
 
+/// <summary>
+/// Middleware global para el manejo centralizado de excepciones.
+/// Captura excepciones no controladas y devuelve respuestas JSON
+/// con el código HTTP adecuado y un mensaje descriptivo.
+/// </summary>
 public class ExceptionMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly ILogger<ExceptionMiddleware> _logger;
 
+    /// <summary>
+    /// Constructor que recibe el siguiente middleware en el pipeline.
+    /// </summary>
+    /// <param name="next">Siguiente delegado del pipeline.</param>
+    /// <param name="logger">Logger para registrar las excepciones.</param>
     public ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddleware> logger)
     {
         _next = next;
         _logger = logger;
     }
 
+    /// <summary>
+    /// Ejecuta el middleware. Si ocurre una excepción, la captura y
+    /// devuelve una respuesta JSON estructurada.
+    /// </summary>
+    /// <param name="context">Contexto HTTP actual.</param>
     public async Task InvokeAsync(HttpContext context)
     {
         try

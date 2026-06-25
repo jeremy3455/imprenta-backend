@@ -3,14 +3,25 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ImprentaSR.Infrastructure.Data;
 
+/// <summary>
+/// Contexto de base de datos de la aplicación.
+/// Configura las entidades del dominio con Fluent API para EF Core.
+/// Actualmente usa InMemoryDatabase para desarrollo.
+/// </summary>
 public class AppDbContext : DbContext
 {
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
     {
     }
 
+    /// <summary>Tabla de clientes.</summary>
     public DbSet<Cliente> Clientes => Set<Cliente>();
 
+    /// <summary>
+    /// Configura el mapeo de entidades usando Fluent API.
+    /// Define restricciones, longitud de campos y owned entities (Direccion).
+    /// </summary>
+    /// <param name="modelBuilder">Constructor del modelo.</param>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
