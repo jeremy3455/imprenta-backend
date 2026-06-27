@@ -1,6 +1,9 @@
 using System.Text;
 using ImprentaSR.Application.Interfaces;
 using ImprentaSR.Application.UseCases.Clientes;
+using ImprentaSR.Application.UseCases.Pedidos;
+using ImprentaSR.Application.UseCases.Productos;
+using ImprentaSR.Application.Validators;
 using ImprentaSR.Domain.Entities;
 using ImprentaSR.Domain.Interfaces;
 using ImprentaSR.Infrastructure.Data;
@@ -27,9 +30,20 @@ builder.Services.AddSingleton(new DbConnectionFactory(connectionString));
 builder.Services.AddScoped<DatabaseInitializer>();
 
 // Dependency Injection - Clean Architecture
-builder.Services.AddScoped<IRepository<Cliente>, ClienteRepository>();
+builder.Services.AddScoped<IClienteRepository, ClienteRepository>();
 builder.Services.AddScoped<UsuarioRepository>();
 builder.Services.AddScoped<IClienteService, ClienteService>();
+builder.Services.AddScoped<ISriValidator, SriValidator>();
+builder.Services.AddScoped<IProductoRepository, ProductoRepository>();
+builder.Services.AddScoped<IProductoService, ProductoService>();
+builder.Services.AddScoped<IPedidoRepository, PedidoRepository>();
+builder.Services.AddScoped<IPedidoService, PedidoService>();
+builder.Services.AddHttpClient<SriService>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(15);
+    client.BaseAddress = new Uri("https://srienlinea.sri.gob.ec/sri-catastro-sujeto-servicio-internet/rest/");
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (compatible; ImprentaSR/1.0)");
+});
 
 // JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("Jwt");

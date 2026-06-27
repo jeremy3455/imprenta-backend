@@ -1,62 +1,77 @@
 using ImprentaSR.Application.DTOs;
 using ImprentaSR.Application.Interfaces;
+using ImprentaSR.WebAPI.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ImprentaSR.WebAPI.Controllers;
 
-/// <summary>
-/// Controlador REST para la gestión de clientes.
-/// Expone endpoints CRUD sobre la ruta /api/clientes.
-/// Todos los endpoints requieren autenticación JWT.
-/// </summary>
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
 public class ClientesController : ControllerBase
 {
     private readonly IClienteService _clienteService;
+    private readonly SriService _sriService;
+    private readonly ISriValidator _sriValidator;
 
-    public ClientesController(IClienteService clienteService)
+    public ClientesController(IClienteService clienteService, SriService sriService, ISriValidator sriValidator)
     {
         _clienteService = clienteService;
+        _sriService = sriService;
+        _sriValidator = sriValidator;
     }
 
-    /// <summary>Obtiene todos los clientes activos.</summary>
-    /// <response code="200">Lista de clientes activos.</response>
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<ClienteDto>>> GetAll()
+    public async Task<ActionResult<IReadOnlyList<ClienteDto>>> GetAll([FromQuery] bool? estado = null)
     {
-        var clientes = await _clienteService.GetAllAsync();
+        var clientes = await _clienteService.GetAllAsync(estado);
         return Ok(clientes);
     }
 
-    /// <summary>Obtiene un cliente por su Id.</summary>
-    /// <param name="id">Id del cliente (int).</param>
-    /// <response code="200">Cliente encontrado.</response>
-    /// <response code="404">Cliente no encontrado.</response>
     [HttpGet("{id:int}")]
     public async Task<ActionResult<ClienteDto>> GetById(int id)
     {
         var cliente = await _clienteService.GetByIdAsync(id);
         if (cliente is null)
             return NotFound(new { message = $"Cliente con Id {id} no encontrado." });
-
         return Ok(cliente);
     }
 
-    /// <summary>Crea un nuevo cliente.</summary>
-    /// <response code="201">Cliente creado exitosamente.</response>
+    [HttpGet("sri/{numero}")]
+    public async Task<ActionResult<SriRespuestaDto>> ConsultarSri(string numero)
+    {
+        var error = _sriValidator.ValidarNumero(numero);
+        if (error is not null)
+            return BadRequest(new { message = error });
+
+        try
+        {
+            var resultado = await _sriService.ConsultarContribuyenteAsync(numero);
+            if (!resultado.Encontrado)
+                return NotFound(new { message = "Contribuyente no encontrado en el SRI." });
+            return Ok(resultado);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return StatusCode(503, new { message = ex.Message });
+        }
+    }
+
     [HttpPost]
     public async Task<ActionResult<ClienteDto>> Create(CreateClienteDto dto)
     {
-        var cliente = await _clienteService.CreateAsync(dto);
-        return CreatedAtAction(nameof(GetById), new { id = cliente.Id }, cliente);
+        try
+        {
+            var cliente = await _clienteService.CreateAsync(dto);
+            return CreatedAtAction(nameof(GetById), new { id = cliente.Id }, cliente);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
-    /// <summary>Actualiza los datos de un cliente existente.</summary>
-    /// <response code="200">Cliente actualizado.</response>
-    /// <response code="404">Cliente no encontrado.</response>
     [HttpPut("{id:int}")]
     public async Task<ActionResult<ClienteDto>> Update(int id, UpdateClienteDto dto)
     {
@@ -69,11 +84,12 @@ public class ClientesController : ControllerBase
         {
             return NotFound(new { message = ex.Message });
         }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
-    /// <summary>Elimina (soft delete) un cliente.</summary>
-    /// <response code="204">Cliente eliminado.</response>
-    /// <response code="404">Cliente no encontrado.</response>
     [HttpDelete("{id:int}")]
     public async Task<ActionResult> Delete(int id)
     {

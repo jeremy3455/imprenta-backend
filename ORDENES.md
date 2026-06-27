@@ -45,5 +45,7 @@ C:\Users\USER\OneDrive\Desktop\Imprenta\
 1. **Nunca inventes** nombres de tablas, columnas, endpoints o servicios que no estén documentados.
 2. **Siempre revisa** el archivo correspondiente antes de crear o modificar algo.
 3. **Commits claros** en español, describiendo qué se cambió y por qué.
-4. **Backend**: sigue Clean Architecture (Application → Domain → Infrastructure → WebAPI).
-5. **Frontend**: componentes standalone, servicios con inyección de dependencias.
+4. **No hagas commit ni push** hasta que el usuario lo autorice explícitamente con la palabra **"subelo"**.
+5. **Cada vez que crees un nuevo componente, servicio, pipe, directiva, controlador, repositorio, script SQL o cualquier pieza nueva**, debes crear un archivo de fix en `docs/fixes/` documentando qué se creó, por qué y cómo funciona. Seguir la plantilla del índice (`docs/fixes/README.md`).
+6. **Backend**: sigue Clean Architecture (Application → Domain → Infrastructure → WebAPI).
+7. **Frontend**: componentes standalone, servicios con inyección de dependencias.
