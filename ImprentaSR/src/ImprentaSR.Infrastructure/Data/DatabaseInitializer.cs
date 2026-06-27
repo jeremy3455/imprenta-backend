@@ -66,6 +66,7 @@ public class DatabaseInitializer
         // Migraciones incrementales (siempre ejecutar, son idempotentes)
         await ExecuteScriptAsync(connection, "changes\\2026-06-26_pedidos-modulo.sql");
         await ExecuteScriptAsync(connection, "changes\\2026-06-27_solicitudes-notificaciones.sql");
+        await ExecuteScriptAsync(connection, "changes\\2026-06-28_solicitudes-formapago.sql");
 
         // Seed usuarios por defecto si no existen
         await SeedDefaultUsersAsync(connection);
