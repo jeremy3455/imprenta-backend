@@ -35,6 +35,7 @@ public class PedidosController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "Admin,Operador")]
     public async Task<ActionResult<PedidoDetalleDto>> Create(PedidoCreateDto dto)
     {
         try
@@ -49,6 +50,7 @@ public class PedidosController : ControllerBase
     }
 
     [HttpPut("{id:int}")]
+    [Authorize(Roles = "Admin,Operador")]
     public async Task<ActionResult<PedidoDetalleDto>> Update(int id, PedidoCreateDto dto)
     {
         try
@@ -67,6 +69,7 @@ public class PedidosController : ControllerBase
     }
 
     [HttpPatch("{id:int}/aprobar")]
+    [Authorize(Roles = "Admin,Operador")]
     public async Task<ActionResult<PedidoDetalleDto>> Aprobar(int id)
     {
         try
@@ -85,6 +88,7 @@ public class PedidosController : ControllerBase
     }
 
     [HttpPatch("{id:int}/iniciar-produccion")]
+    [Authorize(Roles = "Admin,Operador")]
     public async Task<ActionResult<PedidoDetalleDto>> IniciarProduccion(int id)
     {
         try
@@ -103,6 +107,7 @@ public class PedidosController : ControllerBase
     }
 
     [HttpPatch("{id:int}/listo-entrega")]
+    [Authorize(Roles = "Admin,Operador")]
     public async Task<ActionResult<PedidoDetalleDto>> MarcarListoEntrega(int id)
     {
         try
@@ -121,6 +126,7 @@ public class PedidosController : ControllerBase
     }
 
     [HttpPatch("{id:int}/entregar")]
+    [Authorize(Roles = "Admin,Operador")]
     public async Task<ActionResult<PedidoDetalleDto>> MarcarEntregado(int id)
     {
         try
@@ -139,6 +145,7 @@ public class PedidosController : ControllerBase
     }
 
     [HttpPatch("{id:int}/anular")]
+    [Authorize(Roles = "Admin,Operador")]
     public async Task<ActionResult<PedidoDetalleDto>> Anular(int id, [FromBody] AnularDto dto)
     {
         try
@@ -157,6 +164,7 @@ public class PedidosController : ControllerBase
     }
 
     [HttpPatch("{pedidoId:int}/detalle/{detalleId:int}/datos-sri")]
+    [Authorize(Roles = "Admin,Operador")]
     public async Task<ActionResult<PedidoDetalleDto>> CompletarDatosSri(
         int pedidoId, int detalleId, [FromBody] DatosSriDto dto)
     {
