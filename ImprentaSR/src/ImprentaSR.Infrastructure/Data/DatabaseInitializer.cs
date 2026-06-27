@@ -69,6 +69,9 @@ public class DatabaseInitializer
 
         // Seed usuarios por defecto si no existen
         await SeedDefaultUsersAsync(connection);
+
+        // Seed cliente de prueba
+        await SeedTestClienteAsync(connection);
     }
 
     /// <summary>
@@ -145,6 +148,36 @@ public class DatabaseInitializer
         {
             new { Nombre = "Admin", Email = "admin@imprenta.com", PasswordHash = adminHash, Rol = "Admin" },
             new { Nombre = "Operador", Email = "operador@imprenta.com", PasswordHash = operadorHash, Rol = "Operador" }
+        });
+    }
+
+    private static async Task SeedTestClienteAsync(IDbConnection connection)
+    {
+        var exists = await connection.ExecuteScalarAsync<int>(
+            "SELECT COUNT(1) FROM Clientes WHERE NumeroCedulaRuc = '0999999999'");
+        if (exists > 0) return;
+
+        const string insertCliente = """
+            INSERT INTO Clientes (NumeroCedulaRuc, RazonSocial, Direccion, Email, Telefono, TipoContribuyente, Estado)
+            VALUES ('0999999999', 'Cliente de Prueba', 'Av. Principal 123', 'cliente@test.com', '0999999999', 'PERSONA_NATURAL', 1);
+            SELECT CAST(SCOPE_IDENTITY() AS INT);
+            """;
+
+        var clienteId = await connection.ExecuteScalarAsync<int>(insertCliente);
+
+        var passwordHash = BCrypt.Net.BCrypt.HashPassword("Cliente123!");
+        const string insertUser = """
+            INSERT INTO Usuarios (ClienteId, Nombre, Email, PasswordHash, Rol, EmailVerificado)
+            VALUES (@ClienteId, @Nombre, @Email, @PasswordHash, @Rol, 1);
+            """;
+
+        await connection.ExecuteAsync(insertUser, new
+        {
+            ClienteId = clienteId,
+            Nombre = "Cliente Prueba",
+            Email = "cliente@test.com",
+            PasswordHash = passwordHash,
+            Rol = "Cliente",
         });
     }
 }
