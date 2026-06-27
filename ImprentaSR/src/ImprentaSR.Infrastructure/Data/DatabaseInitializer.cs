@@ -55,7 +55,6 @@ public class DatabaseInitializer
 
         if (!await IsSchemaInitializedAsync(connection))
         {
-            // Ejecutar scripts en orden (00_create_database ya se aplicó arriba)
             await ExecuteScriptAsync(connection, "schema\\01_tables.sql");
             await ExecuteScriptAsync(connection, "schema\\02_indexes.sql");
             await ExecuteScriptAsync(connection, "seeds\\tipos_documento.sql");
@@ -63,6 +62,10 @@ public class DatabaseInitializer
             await ExecuteScriptAsync(connection, "procedures\\sp_ReporteProduccionMensual.sql");
             await ExecuteScriptAsync(connection, "procedures\\sp_MarcarEnviadoSri.sql");
         }
+
+        // Migraciones incrementales (siempre ejecutar, son idempotentes)
+        await ExecuteScriptAsync(connection, "changes\\2026-06-26_pedidos-modulo.sql");
+        await ExecuteScriptAsync(connection, "changes\\2026-06-27_solicitudes-notificaciones.sql");
 
         // Seed usuarios por defecto si no existen
         await SeedDefaultUsersAsync(connection);

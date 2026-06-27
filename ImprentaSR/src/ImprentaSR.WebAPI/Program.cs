@@ -1,8 +1,10 @@
 using System.Text;
 using ImprentaSR.Application.Interfaces;
 using ImprentaSR.Application.UseCases.Clientes;
+using ImprentaSR.Application.UseCases.Notificaciones;
 using ImprentaSR.Application.UseCases.Pedidos;
 using ImprentaSR.Application.UseCases.Productos;
+using ImprentaSR.Application.UseCases.Solicitudes;
 using ImprentaSR.Application.Validators;
 using ImprentaSR.Domain.Entities;
 using ImprentaSR.Domain.Interfaces;
@@ -38,6 +40,10 @@ builder.Services.AddScoped<IProductoRepository, ProductoRepository>();
 builder.Services.AddScoped<IProductoService, ProductoService>();
 builder.Services.AddScoped<IPedidoRepository, PedidoRepository>();
 builder.Services.AddScoped<IPedidoService, PedidoService>();
+builder.Services.AddScoped<ISolicitudRepository, SolicitudRepository>();
+builder.Services.AddScoped<ISolicitudService, SolicitudService>();
+builder.Services.AddScoped<INotificacionRepository, NotificacionRepository>();
+builder.Services.AddScoped<INotificacionService, NotificacionService>();
 builder.Services.AddHttpClient<SriService>(client =>
 {
     client.Timeout = TimeSpan.FromSeconds(15);

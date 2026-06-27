@@ -90,6 +90,17 @@ public class UsuarioRepository
     }
 
     /// <summary>
+    /// Obtiene todos los usuarios con rol Admin u Operador.
+    /// </summary>
+    public async Task<IReadOnlyList<Usuario>> GetAllAdminsAsync()
+    {
+        using var connection = await _connectionFactory.CreateConnectionAsync();
+        var items = await connection.QueryAsync<Usuario>(
+            "SELECT * FROM Usuarios WHERE Rol IN ('Admin', 'Operador') AND Activo = 1");
+        return items.ToList().AsReadOnly();
+    }
+
+    /// <summary>
     /// Registra un login exitoso (resetea intentos fallidos).
     /// </summary>
     public async Task RegistrarLoginExitosoAsync(int usuarioId)

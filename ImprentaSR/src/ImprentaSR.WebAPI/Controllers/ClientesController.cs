@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using ImprentaSR.Application.DTOs;
 using ImprentaSR.Application.Interfaces;
 using ImprentaSR.WebAPI.Services;
@@ -20,6 +21,20 @@ public class ClientesController : ControllerBase
         _clienteService = clienteService;
         _sriService = sriService;
         _sriValidator = sriValidator;
+    }
+
+    [HttpGet("mi-perfil")]
+    public async Task<ActionResult<ClienteDto>> MiPerfil()
+    {
+        var clienteIdClaim = User.FindFirstValue("ClienteId");
+        if (string.IsNullOrEmpty(clienteIdClaim))
+            return BadRequest(new { message = "El usuario no tiene un cliente asociado." });
+
+        var clienteId = int.Parse(clienteIdClaim);
+        var cliente = await _clienteService.GetByIdAsync(clienteId);
+        if (cliente is null)
+            return NotFound(new { message = "Cliente no encontrado." });
+        return Ok(cliente);
     }
 
     [HttpGet]

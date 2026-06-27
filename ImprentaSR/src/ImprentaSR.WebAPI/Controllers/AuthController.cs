@@ -92,7 +92,8 @@ public class AuthController : ControllerBase
             Token = token,
             Nombre = user.Nombre,
             Email = user.Email,
-            Rol = user.Rol
+            Rol = user.Rol,
+            ClienteId = user.ClienteId,
         });
     }
 
@@ -130,7 +131,8 @@ public class AuthController : ControllerBase
             Token = token,
             Nombre = user.Nombre,
             Email = user.Email,
-            Rol = user.Rol
+            Rol = user.Rol,
+            ClienteId = user.ClienteId,
         });
     }
 
@@ -147,7 +149,7 @@ public class AuthController : ControllerBase
             return BadRequest(new { message = "El correo ya está registrado." });
 
         var passwordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
-        var usuario = new Usuario(request.Nombre, request.Email, passwordHash, request.Rol);
+        var usuario = new Usuario(request.Nombre, request.Email, passwordHash, request.Rol, request.ClienteId);
 
         var id = await _usuarioRepository.AddAsync(usuario);
         var created = await _usuarioRepository.GetByIdAsync(id);
@@ -158,7 +160,8 @@ public class AuthController : ControllerBase
             Token = token,
             Nombre = created!.Nombre,
             Email = created.Email,
-            Rol = created.Rol
+            Rol = created.Rol,
+            ClienteId = created.ClienteId,
         });
     }
 
@@ -172,13 +175,18 @@ public class AuthController : ControllerBase
             Encoding.UTF8.GetBytes(jwtSettings["Key"]!));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-        var claims = new[]
+        var claimsList = new List<Claim>
         {
-            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new Claim(ClaimTypes.Name, user.Nombre),
-            new Claim(ClaimTypes.Email, user.Email),
-            new Claim(ClaimTypes.Role, user.Rol)
+            new(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new(ClaimTypes.Name, user.Nombre),
+            new(ClaimTypes.Email, user.Email),
+            new(ClaimTypes.Role, user.Rol),
         };
+
+        if (user.ClienteId.HasValue)
+            claimsList.Add(new("ClienteId", user.ClienteId.Value.ToString()));
+
+        var claims = claimsList.ToArray();
 
         var token = new JwtSecurityToken(
             issuer: jwtSettings["Issuer"],
