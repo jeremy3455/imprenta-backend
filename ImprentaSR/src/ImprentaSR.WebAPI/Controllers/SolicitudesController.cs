@@ -15,17 +15,23 @@ public class SolicitudesController : ControllerBase
     private readonly ISolicitudService _solicitudService;
     private readonly INotificacionService _notificacionService;
     private readonly IClienteService _clienteService;
+    private readonly IPedidoService _pedidoService;
+    private readonly IProductoService _productoService;
     private readonly UsuarioRepository _usuarioRepository;
 
     public SolicitudesController(
         ISolicitudService solicitudService,
         INotificacionService notificacionService,
         IClienteService clienteService,
+        IPedidoService pedidoService,
+        IProductoService productoService,
         UsuarioRepository usuarioRepository)
     {
         _solicitudService = solicitudService;
         _notificacionService = notificacionService;
         _clienteService = clienteService;
+        _pedidoService = pedidoService;
+        _productoService = productoService;
         _usuarioRepository = usuarioRepository;
     }
 
@@ -105,6 +111,55 @@ public class SolicitudesController : ControllerBase
         catch (InvalidOperationException ex)
         {
             return Conflict(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("{id:int}/convertir-pedido")]
+    [Authorize(Roles = "Admin,Operador")]
+    public async Task<ActionResult<PedidoDetalleDto>> ConvertirAPedido(int id)
+    {
+        try
+        {
+            var solicitud = await _solicitudService.GetByIdAsync(id);
+            if (solicitud is null)
+                return NotFound(new { message = $"Solicitud con Id {id} no encontrada." });
+
+            if (solicitud.Estado != "Pendiente")
+                return Conflict(new { message = "Solo se puede convertir solicitudes en estado Pendiente." });
+
+            // Construir DTO del pedido con los items de la solicitud
+            var pedidoDto = new PedidoCreateDto
+            {
+                ClienteId = solicitud.ClienteId,
+                FormaPago = "CONTADO",
+                Items = new List<DetallePedidoCreateDto>(),
+            };
+
+            foreach (var item in solicitud.Items)
+            {
+                var producto = await _productoService.GetByIdAsync(item.ProductoId);
+                pedidoDto.Items.Add(new DetallePedidoCreateDto
+                {
+                    ProductoId = item.ProductoId,
+                    Cantidad = item.Cantidad,
+                    PrecioUnitario = producto?.PrecioUnitario ?? 0,
+                });
+            }
+
+            var pedido = await _pedidoService.CreateAsync(pedidoDto);
+
+            // Marcar solicitud como aprobada
+            await _solicitudService.AprobarAsync(id);
+
+            return Ok(pedido);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
         }
     }
 
