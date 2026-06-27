@@ -2,13 +2,12 @@ using ImprentaSR.Application.DTOs;
 using ImprentaSR.Application.Interfaces;
 using ImprentaSR.Domain.Entities;
 using ImprentaSR.Domain.Interfaces;
-using ImprentaSR.Domain.ValueObjects;
 
 namespace ImprentaSR.Application.UseCases.Clientes;
 
 /// <summary>
 /// Servicio de aplicación que implementa los casos de uso para la gestión de clientes.
-/// Orquesta las operaciones entre el dominio y la infraestructura.
+/// Orquesta las operaciones entre el dominio y el repositorio Dapper.
 /// </summary>
 public class ClienteService : IClienteService
 {
@@ -17,102 +16,81 @@ public class ClienteService : IClienteService
     /// <summary>
     /// Constructor que inyecta el repositorio de clientes.
     /// </summary>
-    /// <param name="clienteRepository">Repositorio genérico de clientes.</param>
     public ClienteService(IRepository<Cliente> clienteRepository)
     {
         _clienteRepository = clienteRepository;
     }
 
     /// <summary>
-    /// Obtiene todos los clientes activos del sistema.
+    /// Obtiene todos los clientes activos.
     /// </summary>
-    /// <param name="cancellationToken">Token de cancelación.</param>
-    /// <returns>Lista de clientes activos mapeados a DTOs.</returns>
-    public async Task<IReadOnlyList<ClienteDto>> GetAllAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<ClienteDto>> GetAllAsync()
     {
-        var clientes = await _clienteRepository.GetAllAsync(cancellationToken);
+        var clientes = await _clienteRepository.GetAllAsync();
         return clientes.Select(MapToDto).ToList().AsReadOnly();
     }
 
     /// <summary>
-    /// Obtiene un cliente por su identificador único.
+    /// Obtiene un cliente por su Id.
     /// </summary>
-    /// <param name="id">Id del cliente.</param>
-    /// <param name="cancellationToken">Token de cancelación.</param>
-    /// <returns>El cliente encontrado o null si no existe.</returns>
-    public async Task<ClienteDto?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<ClienteDto?> GetByIdAsync(int id)
     {
-        var cliente = await _clienteRepository.GetByIdAsync(id, cancellationToken);
+        var cliente = await _clienteRepository.GetByIdAsync(id);
         return cliente is not null ? MapToDto(cliente) : null;
     }
 
     /// <summary>
-    /// Crea un nuevo cliente a partir de los datos del DTO de creación.
-    /// Construye el Value Object Direccion y delega la persistencia al repositorio.
+    /// Crea un nuevo cliente a partir del DTO de creación.
     /// </summary>
-    /// <param name="dto">Datos del nuevo cliente.</param>
-    /// <param name="cancellationToken">Token de cancelación.</param>
-    /// <returns>El cliente creado con su Id asignado.</returns>
-    public async Task<ClienteDto> CreateAsync(CreateClienteDto dto, CancellationToken cancellationToken = default)
+    public async Task<ClienteDto> CreateAsync(CreateClienteDto dto)
     {
-        var direccion = new Direccion(dto.Calle, dto.Ciudad, dto.Estado, dto.CodigoPostal);
-        var cliente = new Cliente(dto.Nombre, dto.Email, dto.Telefono, direccion);
+        var cliente = new Cliente(dto.Ruc, dto.RazonSocial, dto.Direccion, dto.Telefono, dto.Email);
+        var id = await _clienteRepository.AddAsync(cliente);
 
-        var created = await _clienteRepository.AddAsync(cliente, cancellationToken);
-        return MapToDto(created);
+        // Recuperar el cliente creado con el Id asignado
+        var created = await _clienteRepository.GetByIdAsync(id);
+        return MapToDto(created!);
     }
 
     /// <summary>
     /// Actualiza los datos de un cliente existente.
     /// Lanza KeyNotFoundException si el cliente no existe.
     /// </summary>
-    /// <param name="id">Id del cliente a actualizar.</param>
-    /// <param name="dto">Nuevos datos del cliente.</param>
-    /// <param name="cancellationToken">Token de cancelación.</param>
-    /// <returns>El cliente actualizado.</returns>
-    /// <exception cref="KeyNotFoundException">Si no se encuentra un cliente con el Id especificado.</exception>
-    public async Task<ClienteDto> UpdateAsync(Guid id, UpdateClienteDto dto, CancellationToken cancellationToken = default)
+    public async Task<ClienteDto> UpdateAsync(int id, UpdateClienteDto dto)
     {
-        var cliente = await _clienteRepository.GetByIdAsync(id, cancellationToken);
+        var cliente = await _clienteRepository.GetByIdAsync(id);
         if (cliente is null)
-            throw new KeyNotFoundException($"Cliente with id {id} not found.");
+            throw new KeyNotFoundException($"Cliente con Id {id} no encontrado.");
 
-        var direccion = new Direccion(dto.Calle, dto.Ciudad, dto.Estado, dto.CodigoPostal);
-        cliente.UpdateData(dto.Nombre, dto.Email, dto.Telefono, direccion);
+        cliente.Update(dto.Ruc, dto.RazonSocial, dto.Direccion, dto.Telefono, dto.Email);
+        await _clienteRepository.UpdateAsync(cliente);
 
-        await _clienteRepository.UpdateAsync(cliente, cancellationToken);
         return MapToDto(cliente);
     }
 
     /// <summary>
     /// Elimina (soft delete) un cliente por su Id.
-    /// Lanza KeyNotFoundException si el cliente no existe.
     /// </summary>
-    /// <param name="id">Id del cliente a eliminar.</param>
-    /// <param name="cancellationToken">Token de cancelación.</param>
-    /// <exception cref="KeyNotFoundException">Si no se encuentra un cliente con el Id especificado.</exception>
-    public async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task DeleteAsync(int id)
     {
-        var cliente = await _clienteRepository.GetByIdAsync(id, cancellationToken);
+        var cliente = await _clienteRepository.GetByIdAsync(id);
         if (cliente is null)
-            throw new KeyNotFoundException($"Cliente with id {id} not found.");
+            throw new KeyNotFoundException($"Cliente con Id {id} no encontrado.");
 
-        await _clienteRepository.DeleteAsync(cliente, cancellationToken);
+        await _clienteRepository.DeleteAsync(id);
     }
 
     /// <summary>
-    /// Mapea una entidad Cliente del dominio a un ClienteDto de la capa de aplicación.
+    /// Mapea una entidad Cliente a un ClienteDto.
     /// </summary>
-    /// <param name="cliente">Entidad de dominio.</param>
-    /// <returns>DTO con los datos del cliente.</returns>
     private static ClienteDto MapToDto(Cliente cliente) => new()
     {
         Id = cliente.Id,
-        Nombre = cliente.Nombre,
-        Email = cliente.Email,
+        Ruc = cliente.Ruc,
+        RazonSocial = cliente.RazonSocial,
+        Direccion = cliente.Direccion,
         Telefono = cliente.Telefono,
-        Direccion = cliente.Direccion.ToString(),
-        Status = cliente.Status.ToString(),
-        CreatedAt = cliente.CreatedAt
+        Email = cliente.Email,
+        Activo = cliente.Activo
     };
 }

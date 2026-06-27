@@ -1,0 +1,14 @@
+{
+  "profiles": {
+    "ImprentaSR.Application": {
+      "commandName": "Project"
+    },
+    "Perfil 1": {
+      "commandName": "Project"
+    },
+    "Perfil 2": {
+      "commandName": "Executable",
+      "executablePath": "C:\\Users\\USER\\OneDrive\\Desktop\\Imprenta\\imprenta-back\\ImprentaSR\\ImprentaSR.slnx"
+    }
+  }
+}

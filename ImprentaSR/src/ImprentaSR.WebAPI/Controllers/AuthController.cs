@@ -1,7 +1,10 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using ImprentaSR.Domain.Entities;
+using ImprentaSR.Infrastructure.Repositories;
 using ImprentaSR.WebAPI.Models;
+using ImprentaSR.WebAPI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 
@@ -9,62 +12,117 @@ namespace ImprentaSR.WebAPI.Controllers;
 
 /// <summary>
 /// Controlador de autenticación.
-/// Provee endpoints para login, registro y verificación de sesión.
-/// Los usuarios se almacenan en memoria mientras no se implemente la base de datos SQL.
+/// Provee endpoints para login y registro de usuarios usando la base de datos SQL.
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
 public class AuthController : ControllerBase
 {
-    private static readonly List<UserStore> Users = [];
+    private readonly UsuarioRepository _usuarioRepository;
+    private readonly OtpService _otpService;
     private readonly IConfiguration _configuration;
 
-    /// <summary>
-    /// Inicializa el controlador con usuarios por defecto.
-    /// </summary>
-    /// <param name="configuration">Configuración de la aplicación (JWT).</param>
-    public AuthController(IConfiguration configuration)
+    public AuthController(
+        UsuarioRepository usuarioRepository,
+        OtpService otpService,
+        IConfiguration configuration)
     {
+        _usuarioRepository = usuarioRepository;
+        _otpService = otpService;
         _configuration = configuration;
+    }
 
-        if (Users.Count == 0)
+    /// <summary>
+    /// Valida credenciales y envía un código OTP de 6 dígitos al correo del usuario.
+    /// Para correos de prueba el código es el configurado en appsettings (123456).
+    /// </summary>
+    /// <response code="200">OTP generado y enviado (simulado).</response>
+    /// <response code="401">Credenciales inválidas o cuenta bloqueada.</response>
+    [HttpPost("request-otp")]
+    public async Task<ActionResult<RequestOtpResponse>> RequestOtp([FromBody] LoginRequest request)
+    {
+        var user = await _usuarioRepository.GetByEmailAsync(request.Email);
+
+        if (user is null)
+            return Unauthorized(new { message = "Credenciales inválidas." });
+
+        if (user.BloqueadoHasta.HasValue && user.BloqueadoHasta > DateTime.UtcNow)
+            return Unauthorized(new { message = "Cuenta bloqueada. Intenta más tarde." });
+
+        if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
         {
-            Users.Add(new UserStore
-            {
-                Id = 1,
-                Nombre = "Admin",
-                Email = "admin@imprenta.com",
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin123!"),
-                Rol = "Admin"
-            });
-            Users.Add(new UserStore
-            {
-                Id = 2,
-                Nombre = "Operador",
-                Email = "operador@imprenta.com",
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Operador123!"),
-                Rol = "Operador"
-            });
+            await _usuarioRepository.RegistrarIntentoFallidoAsync(user.Id);
+            return Unauthorized(new { message = "Credenciales inválidas." });
         }
+
+        var (maskedEmail, expiresIn) = _otpService.GenerateAndStore(user.Id, user.Email);
+
+        return Ok(new RequestOtpResponse
+        {
+            Message = "Código de verificación enviado a tu correo.",
+            MaskedEmail = maskedEmail,
+            ExpiresInSeconds = expiresIn
+        });
+    }
+
+    /// <summary>
+    /// Verifica el código OTP e inicia sesión devolviendo el token JWT.
+    /// </summary>
+    /// <response code="200">OTP válido, sesión iniciada.</response>
+    /// <response code="400">Código inválido o expirado.</response>
+    [HttpPost("verify-otp")]
+    public async Task<ActionResult<AuthResponse>> VerifyOtp([FromBody] VerifyOtpRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Code) || request.Code.Trim().Length != 6 || !request.Code.All(char.IsDigit))
+            return BadRequest(new { message = "El código debe tener exactamente 6 dígitos." });
+
+        var userId = _otpService.Validate(request.Email, request.Code);
+        if (userId is null)
+            return BadRequest(new { message = "Código inválido o expirado. Solicita uno nuevo." });
+
+        var user = await _usuarioRepository.GetByIdAsync(userId.Value);
+        if (user is null)
+            return BadRequest(new { message = "Usuario no encontrado." });
+
+        await _usuarioRepository.RegistrarLoginExitosoAsync(user.Id);
+
+        var token = GenerateJwtToken(user);
+        return Ok(new AuthResponse
+        {
+            Token = token,
+            Nombre = user.Nombre,
+            Email = user.Email,
+            Rol = user.Rol
+        });
     }
 
     /// <summary>
     /// Inicia sesión con credenciales válidas y devuelve un token JWT.
+    /// Verifica el bloqueo por intentos fallidos y la contraseña con BCrypt.
     /// </summary>
-    /// <param name="request">Credenciales de acceso.</param>
-    /// <returns>Token JWT y datos del usuario.</returns>
     /// <response code="200">Inicio de sesión exitoso.</response>
-    /// <response code="401">Credenciales inválidas.</response>
+    /// <response code="401">Credenciales inválidas o cuenta bloqueada.</response>
     [HttpPost("login")]
-    public ActionResult<AuthResponse> Login([FromBody] LoginRequest request)
+    public async Task<ActionResult<AuthResponse>> Login([FromBody] LoginRequest request)
     {
-        var user = Users.FirstOrDefault(u =>
-            u.Email.Equals(request.Email, StringComparison.OrdinalIgnoreCase));
+        var user = await _usuarioRepository.GetByEmailAsync(request.Email);
 
-        if (user is null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+        if (user is null)
+            return Unauthorized(new { message = "Credenciales inválidas." });
+
+        // Verificar bloqueo
+        if (user.BloqueadoHasta.HasValue && user.BloqueadoHasta > DateTime.UtcNow)
+            return Unauthorized(new { message = "Cuenta bloqueada. Intenta más tarde." });
+
+        // Verificar contraseña
+        if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
         {
+            await _usuarioRepository.RegistrarIntentoFallidoAsync(user.Id);
             return Unauthorized(new { message = "Credenciales inválidas." });
         }
+
+        // Login exitoso
+        await _usuarioRepository.RegistrarLoginExitosoAsync(user.Id);
 
         var token = GenerateJwtToken(user);
         return Ok(new AuthResponse
@@ -79,45 +137,35 @@ public class AuthController : ControllerBase
     /// <summary>
     /// Registra un nuevo usuario en el sistema.
     /// </summary>
-    /// <param name="request">Datos del nuevo usuario.</param>
-    /// <returns>Token JWT y datos del usuario creado.</returns>
     /// <response code="200">Usuario registrado exitosamente.</response>
     /// <response code="400">El correo ya está registrado.</response>
     [HttpPost("register")]
-    public ActionResult<AuthResponse> Register([FromBody] RegisterRequest request)
+    public async Task<ActionResult<AuthResponse>> Register([FromBody] RegisterRequest request)
     {
-        if (Users.Any(u => u.Email.Equals(request.Email, StringComparison.OrdinalIgnoreCase)))
-        {
+        var existing = await _usuarioRepository.GetByEmailAsync(request.Email);
+        if (existing is not null)
             return BadRequest(new { message = "El correo ya está registrado." });
-        }
 
-        var newId = Users.Count > 0 ? Users.Max(u => u.Id) + 1 : 1;
-        var user = new UserStore
-        {
-            Id = newId,
-            Nombre = request.Nombre,
-            Email = request.Email,
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
-            Rol = request.Rol
-        };
-        Users.Add(user);
+        var passwordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
+        var usuario = new Usuario(request.Nombre, request.Email, passwordHash, request.Rol);
 
-        var token = GenerateJwtToken(user);
+        var id = await _usuarioRepository.AddAsync(usuario);
+        var created = await _usuarioRepository.GetByIdAsync(id);
+
+        var token = GenerateJwtToken(created!);
         return Ok(new AuthResponse
         {
             Token = token,
-            Nombre = user.Nombre,
-            Email = user.Email,
-            Rol = user.Rol
+            Nombre = created!.Nombre,
+            Email = created.Email,
+            Rol = created.Rol
         });
     }
 
     /// <summary>
     /// Genera un token JWT para el usuario especificado.
     /// </summary>
-    /// <param name="user">Datos del usuario.</param>
-    /// <returns>Token JWT en formato string.</returns>
-    private string GenerateJwtToken(UserStore user)
+    private string GenerateJwtToken(Usuario user)
     {
         var jwtSettings = _configuration.GetSection("Jwt");
         var key = new SymmetricSecurityKey(
@@ -141,17 +189,5 @@ public class AuthController : ControllerBase
         );
 
         return new JwtSecurityTokenHandler().WriteToken(token);
-    }
-
-    /// <summary>
-    /// Almacenamiento en memoria para usuarios (temporal hasta implementar SQL Server).
-    /// </summary>
-    private class UserStore
-    {
-        public int Id { get; init; }
-        public string Nombre { get; init; } = string.Empty;
-        public string Email { get; init; } = string.Empty;
-        public string PasswordHash { get; init; } = string.Empty;
-        public string Rol { get; init; } = "Cliente";
     }
 }

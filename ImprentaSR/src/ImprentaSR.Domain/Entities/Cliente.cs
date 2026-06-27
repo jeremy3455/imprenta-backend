@@ -1,72 +1,64 @@
-using ImprentaSR.Domain.Enums;
-using ImprentaSR.Domain.ValueObjects;
-
 namespace ImprentaSR.Domain.Entities;
 
 /// <summary>
 /// Entidad que representa un cliente de la imprenta.
-/// Contiene sus datos de contacto, dirección y estado actual.
+/// Corresponde a la tabla Clientes de la base de datos SQL.
 /// </summary>
 public class Cliente : BaseEntity
 {
-    /// <summary>Nombre completo del cliente.</summary>
-    public string Nombre { get; private set; }
+    /// <summary>RUC del cliente (13 dígitos, único).</summary>
+    public string Ruc { get; private set; } = string.Empty;
 
-    /// <summary>Correo electrónico del cliente.</summary>
-    public string Email { get; private set; }
+    /// <summary>Razón social o nombre completo.</summary>
+    public string RazonSocial { get; private set; } = string.Empty;
 
-    /// <summary>Número de teléfono de contacto.</summary>
-    public string Telefono { get; private set; }
+    /// <summary>Dirección física.</summary>
+    public string? Direccion { get; private set; }
 
-    /// <summary>Dirección física del cliente (Value Object).</summary>
-    public Direccion Direccion { get; private set; }
+    /// <summary>Teléfono de contacto.</summary>
+    public string? Telefono { get; private set; }
 
-    /// <summary>Estado actual del cliente (Activo/Inactivo/Suspendido).</summary>
-    public ClienteStatus Status { get; private set; }
+    /// <summary>Correo electrónico.</summary>
+    public string? Email { get; private set; }
 
-    /// <summary>Constructor privado requerido por EF Core.</summary>
+    /// <summary>Indica si el cliente está activo.</summary>
+    public bool Activo { get; private set; } = true;
+
+    /// <summary>Constructor privado requerido por Dapper.</summary>
     private Cliente() { }
 
     /// <summary>
-    /// Crea un nuevo cliente con los datos proporcionados.
-    /// El cliente se crea con estado Activo por defecto.
+    /// Crea un nuevo cliente.
     /// </summary>
-    /// <param name="nombre">Nombre completo del cliente.</param>
-    /// <param name="email">Correo electrónico.</param>
-    /// <param name="telefono">Número de teléfono.</param>
-    /// <param name="direccion">Dirección física.</param>
-    public Cliente(string nombre, string email, string telefono, Direccion direccion)
+    /// <param name="ruc">RUC del cliente (13 dígitos).</param>
+    /// <param name="razonSocial">Razón social.</param>
+    /// <param name="direccion">Dirección física (opcional).</param>
+    /// <param name="telefono">Teléfono (opcional).</param>
+    /// <param name="email">Correo electrónico (opcional).</param>
+    public Cliente(string ruc, string razonSocial, string? direccion, string? telefono, string? email)
     {
-        Nombre = nombre;
-        Email = email;
-        Telefono = telefono;
+        Ruc = ruc;
+        RazonSocial = razonSocial;
         Direccion = direccion;
-        Status = ClienteStatus.Activo;
+        Telefono = telefono;
+        Email = email;
     }
 
     /// <summary>
-    /// Actualiza los datos principales del cliente.
+    /// Actualiza los datos del cliente.
     /// </summary>
-    /// <param name="nombre">Nuevo nombre.</param>
-    /// <param name="email">Nuevo correo electrónico.</param>
-    /// <param name="telefono">Nuevo teléfono.</param>
-    /// <param name="direccion">Nueva dirección.</param>
-    public void UpdateData(string nombre, string email, string telefono, Direccion direccion)
+    public void Update(string ruc, string razonSocial, string? direccion, string? telefono, string? email)
     {
-        Nombre = nombre;
-        Email = email;
-        Telefono = telefono;
+        Ruc = ruc;
+        RazonSocial = razonSocial;
         Direccion = direccion;
-        SetUpdated();
+        Telefono = telefono;
+        Email = email;
     }
 
-    /// <summary>
-    /// Cambia el estado del cliente.
-    /// </summary>
-    /// <param name="newStatus">Nuevo estado a asignar.</param>
-    public void UpdateStatus(ClienteStatus newStatus)
-    {
-        Status = newStatus;
-        SetUpdated();
-    }
+    /// <summary>Desactiva el cliente.</summary>
+    public void Desactivar() => Activo = false;
+
+    /// <summary>Reactiva el cliente.</summary>
+    public void Activar() => Activo = true;
 }

@@ -6,8 +6,8 @@ using ImprentaSR.Domain.Interfaces;
 using ImprentaSR.Infrastructure.Data;
 using ImprentaSR.Infrastructure.Repositories;
 using ImprentaSR.WebAPI.Middleware;
+using ImprentaSR.WebAPI.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -16,12 +16,19 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 
 builder.Services.AddOpenApi();
+builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<OtpService>();
 
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseInMemoryDatabase("ImprentaDb"));
+// Database - Dapper + SQL Server
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? "Server=localhost;Database=ImprentaDB;Trusted_Connection=True;TrustServerCertificate=True;";
+
+builder.Services.AddSingleton(new DbConnectionFactory(connectionString));
+builder.Services.AddScoped<DatabaseInitializer>();
 
 // Dependency Injection - Clean Architecture
-builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
+builder.Services.AddScoped<IRepository<Cliente>, ClienteRepository>();
+builder.Services.AddScoped<UsuarioRepository>();
 builder.Services.AddScoped<IClienteService, ClienteService>();
 
 // JWT Authentication
@@ -60,6 +67,13 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+
+// ── Database Initialization ───────────────────────────────────
+using (var scope = app.Services.CreateScope())
+{
+    var initializer = scope.ServiceProvider.GetRequiredService<DatabaseInitializer>();
+    await initializer.InitializeAsync();
+}
 
 // ── Middleware Pipeline ───────────────────────────────────────
 app.UseMiddleware<ExceptionMiddleware>();

@@ -2,5 +2,7 @@
   <Project Path="src/ImprentaSR.Domain/ImprentaSR.Domain.csproj" />
   <Project Path="src/ImprentaSR.Application/ImprentaSR.Application.csproj" />
   <Project Path="src/ImprentaSR.Infrastructure/ImprentaSR.Infrastructure.csproj" />
-  <Project Path="src/ImprentaSR.WebAPI/ImprentaSR.WebAPI.csproj" />
+  <Project Path="src/ImprentaSR.WebAPI/ImprentaSR.WebAPI.csproj">
+    <BuildDependency Project="src/ImprentaSR.Domain/ImprentaSR.Domain.csproj" />
+  </Project>
 </Solution>
