@@ -128,10 +128,11 @@ public class SolicitudesController : ControllerBase
                 return Conflict(new { message = "Solo se puede convertir solicitudes en estado Pendiente." });
 
             // Construir DTO del pedido con los items de la solicitud
+            var formaPago = solicitud.FormaPago == "TRANSFERENCIA" ? "TRANSFERENCIA" : "CONTADO";
             var pedidoDto = new PedidoCreateDto
             {
                 ClienteId = solicitud.ClienteId,
-                FormaPago = "CONTADO",
+                FormaPago = formaPago,
                 Items = new List<DetallePedidoCreateDto>(),
             };
 
@@ -148,8 +149,8 @@ public class SolicitudesController : ControllerBase
 
             var pedido = await _pedidoService.CreateAsync(pedidoDto);
 
-            // Marcar solicitud como aprobada
-            await _solicitudService.AprobarAsync(id);
+            // Vincular pedido a la solicitud y aprobar
+            await _solicitudService.VincularPedidoAsync(id, pedido.Id, pedido.MontoTotal);
 
             return Ok(pedido);
         }

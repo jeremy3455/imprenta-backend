@@ -44,7 +44,8 @@ public class SolicitudService : ISolicitudService
         if (dto.Items is null || dto.Items.Count == 0)
             throw new ArgumentException("Debe agregar al menos un producto.");
 
-        var solicitud = new Solicitud(clienteId, dto.Observacion);
+        var formaPago = dto.FormaPago ?? "EFECTIVO";
+        var solicitud = new Solicitud(clienteId, formaPago, dto.Observacion);
         var solicitudId = await _solicitudRepository.AddAsync(solicitud);
 
         foreach (var item in dto.Items)
@@ -66,6 +67,17 @@ public class SolicitudService : ISolicitudService
             ?? throw new KeyNotFoundException($"Solicitud con Id {id} no encontrada.");
 
         solicitud.Aprobar();
+        await _solicitudRepository.UpdateAsync(solicitud);
+        return MapToDetalle(solicitud);
+    }
+
+    public async Task<SolicitudDetalleDto> VincularPedidoAsync(int id, int pedidoId, decimal montoTotal)
+    {
+        var solicitud = await _solicitudRepository.GetByIdAsync(id)
+            ?? throw new KeyNotFoundException($"Solicitud con Id {id} no encontrada.");
+
+        solicitud.Aprobar();
+        solicitud.VincularPedido(pedidoId, montoTotal);
         await _solicitudRepository.UpdateAsync(solicitud);
         return MapToDetalle(solicitud);
     }
@@ -98,6 +110,9 @@ public class SolicitudService : ISolicitudService
         RazonSocialCliente = s.Cliente?.RazonSocial ?? string.Empty,
         NumeroCedulaRuc = s.Cliente?.NumeroCedulaRuc ?? string.Empty,
         Estado = s.Estado,
+        FormaPago = s.FormaPago,
+        PedidoId = s.PedidoId,
+        MontoTotal = s.MontoTotal,
         Observacion = s.Observacion,
         FechaSolicitud = s.FechaSolicitud,
         Items = s.Detalles?.Select(d => new SolicitudDetalleItemDto

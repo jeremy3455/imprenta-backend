@@ -4,6 +4,9 @@ public class Solicitud : BaseEntity
 {
     public int ClienteId { get; private set; }
     public string Estado { get; private set; } = "Pendiente";
+    public string FormaPago { get; private set; } = "EFECTIVO";
+    public int? PedidoId { get; private set; }
+    public decimal? MontoTotal { get; private set; }
     public string? Observacion { get; private set; }
     public DateTime FechaSolicitud { get; private set; } = DateTime.UtcNow;
 
@@ -12,9 +15,10 @@ public class Solicitud : BaseEntity
 
     private Solicitud() { }
 
-    public Solicitud(int clienteId, string? observacion)
+    public Solicitud(int clienteId, string formaPago, string? observacion)
     {
         ClienteId = clienteId;
+        FormaPago = formaPago;
         Observacion = observacion;
     }
 
@@ -35,5 +39,11 @@ public class Solicitud : BaseEntity
         if (Estado != "Pendiente")
             throw new InvalidOperationException("Solo se puede rechazar solicitudes en estado Pendiente.");
         Estado = "Rechazada";
+    }
+
+    public void VincularPedido(int pedidoId, decimal montoTotal)
+    {
+        PedidoId = pedidoId;
+        MontoTotal = montoTotal;
     }
 }

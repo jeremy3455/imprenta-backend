@@ -8,5 +8,6 @@ public interface ISolicitudService
     Task<SolicitudDetalleDto?> GetByIdAsync(int id);
     Task<SolicitudDetalleDto> CreateAsync(int clienteId, SolicitudCreateDto dto);
     Task<SolicitudDetalleDto> AprobarAsync(int id);
+    Task<SolicitudDetalleDto> VincularPedidoAsync(int id, int pedidoId, decimal montoTotal);
     Task<SolicitudDetalleDto> RechazarAsync(int id);
 }

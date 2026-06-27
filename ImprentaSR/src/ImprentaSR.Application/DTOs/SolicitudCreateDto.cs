@@ -2,6 +2,7 @@ namespace ImprentaSR.Application.DTOs;
 
 public record SolicitudCreateDto
 {
+    public string FormaPago { get; init; } = "EFECTIVO";
     public string? Observacion { get; init; }
     public List<SolicitudItemDto> Items { get; init; } = new();
 }

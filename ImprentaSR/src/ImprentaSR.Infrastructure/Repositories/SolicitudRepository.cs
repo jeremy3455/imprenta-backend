@@ -114,8 +114,8 @@ public class SolicitudRepository : ISolicitudRepository
     {
         using var connection = await _connectionFactory.CreateConnectionAsync();
         const string sql = """
-            INSERT INTO Solicitudes (ClienteId, Estado, Observacion, FechaSolicitud)
-            VALUES (@ClienteId, @Estado, @Observacion, @FechaSolicitud);
+            INSERT INTO Solicitudes (ClienteId, Estado, FormaPago, Observacion, FechaSolicitud)
+            VALUES (@ClienteId, @Estado, @FormaPago, @Observacion, @FechaSolicitud);
             SELECT CAST(SCOPE_IDENTITY() AS INT);
             """;
         return await connection.ExecuteScalarAsync<int>(sql, solicitud);
@@ -136,9 +136,12 @@ public class SolicitudRepository : ISolicitudRepository
         using var connection = await _connectionFactory.CreateConnectionAsync();
         const string sql = """
             UPDATE Solicitudes
-            SET Estado = @Estado
+            SET Estado = @Estado,
+                FormaPago = @FormaPago,
+                PedidoId = @PedidoId,
+                MontoTotal = @MontoTotal
             WHERE Id = @Id
             """;
-        await connection.ExecuteAsync(sql, new { solicitud.Estado, solicitud.Id });
+        await connection.ExecuteAsync(sql, new { solicitud.Estado, solicitud.FormaPago, solicitud.PedidoId, solicitud.MontoTotal, solicitud.Id });
     }
 }
